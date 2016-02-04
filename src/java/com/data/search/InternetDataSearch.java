@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebInitParam;
 import javax.servlet.annotation.WebServlet;
@@ -27,14 +29,15 @@ import javax.servlet.http.HttpServletResponse;
         urlPatterns = "/InternetDataSearch",
         initParams
         = {
-            @WebInitParam(name = "inputText", value = "java программист разработчик требования резюме")
+            // @WebInitParam(name = "inputText", value = "java программист разработчик требования резюме")
+            @WebInitParam(name = "inputText", value = "java programmer resume")
         }
 )
 public class InternetDataSearch extends HttpServlet {
-
+    
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-
+        
         Cookie[] cookies = request.getCookies(); // step 1: request from client to our web service
         String field, usercookies = "";
         if (cookies != null) {
@@ -63,7 +66,9 @@ public class InternetDataSearch extends HttpServlet {
         websearch.setDirectoryPathData(getDirectoryPath(2));
         websearch.setCookie(usercookies);                          // end step 1
         websearch.setQuery(inputText);
-        ArrayList<SearchResult> data = websearch.getSearchPage();//inputText
+
+        //ArrayList<SearchResult>
+        AllResults allresults = websearch.getSearchPage();//inputText
 
         String mailcookies = websearch.getCookie();
         String[] arraycookies = mailcookies.split("; ");
@@ -75,10 +80,10 @@ public class InternetDataSearch extends HttpServlet {
                 response.addCookie(cookie);
             }
         }
-
+        
         String urlPath = request.getRequestURL().toString();
         urlPath = urlPath.substring(0, urlPath.lastIndexOf("/"));
-
+        
         response.setContentType("text/html;charset=UTF-8");
         try (PrintWriter out = response.getWriter()) {
             out.println("<!DOCTYPE html>");
@@ -87,7 +92,8 @@ public class InternetDataSearch extends HttpServlet {
             out.println("<title>Servlet WordSearch</title>");
             out.println("</head>");
             out.println("<body>");
-
+            
+            List<SearchResult> data = allresults.getList();
             Iterator<SearchResult> iterator = data.iterator();
             while (iterator.hasNext()) {
                 SearchResult search = iterator.next();
@@ -95,30 +101,37 @@ public class InternetDataSearch extends HttpServlet {
                         + search.getTitle() + "</a>"
                         + "<br>"
                         + search.getDescription() + "<br>"
-                        + "<a href=\"" + urlPath + "/myfolder/" + search.getTitle() + ".html\" target=\"_blank\">"
-                        + "Click here" + "</a>"
+                        //                        + "<a href=\"" + urlPath + "/myfolder/" + search.getTitle() + ".html\" target=\"_blank\">"
+                        //                        + "Click here" + "</a>"
                         + "<br><br>");
+                Map map = search.getResultsMap();
+                Iterator iterator1 = map.keySet().iterator();
+                while (iterator1.hasNext()) {
+                    Object key = iterator1.next();
+                    out.println(key + "<br>");
+                    out.println(map.get(key) + "<br><br>");
+                }
             }
             out.println("</body>");
-
+            
             out.println("</html>");
         }
     }
-
+    
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
     }
-
+    
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
     }
-
+    
     private String getDirectoryPath(int step) {
-
+        
         String pathseparator;
         String os = System.getProperty("os.name");
         if (os.startsWith("Windows")) {
@@ -132,7 +145,7 @@ public class InternetDataSearch extends HttpServlet {
         } else {
             path += pathseparator + "datafolder";
         }
-
+        
         File folder = new File(path);
         if (!folder.exists()) {
             folder.mkdir();
@@ -141,12 +154,12 @@ public class InternetDataSearch extends HttpServlet {
             recurseDeleteDir(folder);
             folder.mkdir();
         }
-
+        
         return path + pathseparator;
     }
-
+    
     private void cleanFolder(File dir) {
-
+        
         if (dir.exists()) {
             File[] flist = dir.listFiles();
             for (int i = 0; i < flist.length; i++) {
@@ -155,11 +168,11 @@ public class InternetDataSearch extends HttpServlet {
                     flist[i].delete();
                 }
             }
-
+            
         }
-
+        
     }
-
+    
     private boolean recurseDeleteDir(File fdir) {
         boolean deleted;
         if (fdir.isDirectory()) {
@@ -176,5 +189,5 @@ public class InternetDataSearch extends HttpServlet {
         //deleted = fdir.delete();
         return fdir.delete();
     }
-
+    
 }

@@ -14,13 +14,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class JsonUtil {
-    
+
     private String path;
 
     public void setPath(String path) {
         this.path = path;
     }
-    
+
     ArrayList deserializeFromJSON(String filename, String type) {
 
         filename = path + filename;
@@ -29,14 +29,12 @@ public class JsonUtil {
         if (type.equals("SearchResult")) {
             typeOf = new TypeToken<ArrayList<SearchResult>>() {
             }.getType();
-        } 
-        
-        
+        }
+
 //        else if (type.equals("User")) {
 //            typeOf = new TypeToken<ArrayList<User>>() {
 //            }.getType();
 //        }
-
         String fileData;
         try {
             fileData = new String(Files.readAllBytes(Paths.get(filename)), StandardCharsets.UTF_8);
@@ -80,8 +78,8 @@ public class JsonUtil {
 //            e.printStackTrace(System.err);
 //        }
     }
-    
-     void serializeMap2JSON(TreeMultimap map, String filename) {
+
+    void serializeMap2JSON(TreeMultimap map, String filename) {
 
         String custompath = path + filename;
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -90,11 +88,21 @@ public class JsonUtil {
         try {
             Files.write(Paths.get(custompath), json.getBytes());
         } catch (IOException ex) {
-           // Logger.getLogger(JSONworker.class.getName()).log(Level.SEVERE, null, ex);
+            // Logger.getLogger(JSONworker.class.getName()).log(Level.SEVERE, null, ex);
         }
 
     }
-    
 
-    
+    void serialize(SearchResult sr, String filename) {
+        String custompath = path + filename;
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        String json = gson.toJson(sr);
+
+        try {
+            Files.write(Paths.get(custompath), json.getBytes());
+        } catch (IOException ex) {
+            //Logger.getLogger(JSONworker.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
 }

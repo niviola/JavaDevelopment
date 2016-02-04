@@ -1,5 +1,6 @@
 package com.data.search;
 
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Ordering;
 import com.google.common.collect.TreeMultimap;
 import java.io.BufferedReader;
@@ -14,8 +15,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -30,7 +33,8 @@ public class WebSearch {
     private String cookie;
     private String query;
     private int datanumber = 0;
-    public JsonUtil js;
+    private JsonUtil js;
+    private Multimap<String, String> resultsMultiMap;
 
     public void setQuery(String query) {
         this.query = query;
@@ -123,7 +127,8 @@ public class WebSearch {
 
     // Create an intermediate service that gets data from Google, manipulate data and return it to a user
     // Connect to a search engine. Send user query as parameters.
-    ArrayList<SearchResult> getSearchPage() {//String query
+    // ArrayList<SearchResult> 
+    AllResults getSearchPage() {//String query
 
         js = new JsonUtil();
         js.setPath(directoryPathData);
@@ -143,7 +148,10 @@ public class WebSearch {
         //js.serialize2JSON(listOfSearchResults, "data.json");
         xml.serialize2XML(listOfSearchResults, "data.xml");
 
-        return listOfSearchResults;
+        //        return listOfSearchResults;
+        AllResults allresults = new AllResults();
+        allresults.setList(listOfSearchResults);
+        return allresults;
     }
 
     private ArrayList<SearchResult> parseData(String data) {
@@ -165,6 +173,11 @@ public class WebSearch {
 //                search.setLink(link);
                 String title = getPageTitle(fetchURL(link, false));
                 listOfSearchResults.add(new SearchResult(title, link, description));
+                SearchResult sr = listOfSearchResults.get(listOfSearchResults.size() - 1);
+                Map m = resultsMultiMap.asMap();
+                sr.setResultsMap(m);
+                datanumber++;
+                js.serialize(sr, "test" + datanumber + ".json");
             }
 
 //            listOfSearchResults.add(search);
@@ -249,6 +262,8 @@ public class WebSearch {
         return stringBuilder.toString();
     }
 
+    // Parse, Extract and Order sentences relevant to each search query terms.
+    // Perform ordering inside Multi Map
     private String parseDocument(String txt) {
         int start = txt.indexOf("<body");
         int end = txt.indexOf("</body>");
@@ -263,23 +278,26 @@ public class WebSearch {
             if (start > -1) {
                 end = txt.indexOf("</script>", start);
                 if (end > start) {
-                    txt = txt.substring(0, start) + txt.substring(end);
+                    txt = txt.substring(0, start) + txt.substring(end); //concatenate text inside <script
                 }
             }
 
         }
 
+        txt = txt.replaceAll("[.]<", ". <");
         txt = txt.replaceAll("<[^>]*>", " ").replaceAll(" +", " ");
+
         String txt1 = txt.toLowerCase();
         String search = query.toLowerCase();
-        String[] array = search.split("[+]");
-        TreeMultimap<String, String> map = TreeMultimap.create(Collections.reverseOrder(), Ordering.natural());
+        String[] wordSearchArray = search.split("[+]");
+        //TreeMultimap<String, String> map 
+        resultsMultiMap = TreeMultimap.create(Collections.reverseOrder(), Ordering.natural());
 
-        for (int i = 0; i < array.length; i++) {
+        for (int i = 0; i < wordSearchArray.length; i++) {
 
             int x = 0, from = 0;
             while (x > -1) {
-                x = txt1.indexOf(array[i], from);
+                x = txt1.indexOf(wordSearchArray[i], from);
                 from = x + 1;
 
                 if (x > -1) {
@@ -299,22 +317,23 @@ public class WebSearch {
                     if (y2 > y1) {
 
                         String sentence = txt.substring(y1, y2);
-                        map.put(array[i], highLight(array, sentence));
+                        if (sentence.length() < 300) {
+                            resultsMultiMap.put(wordSearchArray[i], highLight(wordSearchArray, sentence));
+                        }
                     }
 
                 }
             }
         }
 
-        datanumber++;
-        js.serializeMap2JSON(map, "test" + datanumber
-                + ".json");
-
+//        datanumber++;
+//        js.serializeMap2JSON(map, "test" + datanumber
+//                + ".json");
         TreeMultimap<Integer, String> map2 = TreeMultimap.create(Collections.reverseOrder(), Ordering.natural());
-        Iterator<String> itermapkey1 = map.keySet().iterator();
+        Iterator<String> itermapkey1 = resultsMultiMap.keySet().iterator();
         while (itermapkey1.hasNext()) {
             String key = itermapkey1.next();
-            map2.put(map.get(key).size(), key);
+            map2.put(resultsMultiMap.get(key).size(), key);
         }
 
         StringBuilder sb = new StringBuilder("<table style=\" text-align: left; width: 66%; "
@@ -328,13 +347,13 @@ public class WebSearch {
             Iterator<String> iter2 = set.iterator();
             while (iter2.hasNext()) {
                 String wordofset = iter2.next();
-                SortedSet set2 = map.get(wordofset);
+                Collection set2 = resultsMultiMap.get(wordofset);
                 Iterator<String> iter3 = set2.iterator();
                 String sentenceofset2 = "";
                 while (iter3.hasNext()) {
                     sentenceofset2 += iter3.next() + "<br><br>";
                 }
-                sb.append("<tr><td>").append(wordofset).append("</td><td>").append(sentenceofset2).append("</td></tr>");
+                sb.append("<tr><td>").append(wordofset + " (" + key + ")").append("</td><td>").append(sentenceofset2).append("</td></tr>");
             }
         }
 
