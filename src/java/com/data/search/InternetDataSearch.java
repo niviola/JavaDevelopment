@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebInitParam;
 import javax.servlet.annotation.WebServlet;
@@ -19,6 +20,8 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import javax.websocket.Session;
 
 /**
  *
@@ -34,10 +37,10 @@ import javax.servlet.http.HttpServletResponse;
         }
 )
 public class InternetDataSearch extends HttpServlet {
-    
+
     protected void processRequest(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        
+
         Cookie[] cookies = request.getCookies(); // step 1: request from client to our web service
         String field, usercookies = "";
         if (cookies != null) {
@@ -80,10 +83,19 @@ public class InternetDataSearch extends HttpServlet {
                 response.addCookie(cookie);
             }
         }
-        
+
         String urlPath = request.getRequestURL().toString();
         urlPath = urlPath.substring(0, urlPath.lastIndexOf("/"));
-        
+
+        // get a Session
+        HttpSession session = request.getSession();
+        session.setAttribute("alldata", allresults);
+        session.setAttribute("query", inputText);
+
+        // redirect a user to a certain page 
+        RequestDispatcher dispatcher = getServletContext().getRequestDispatcher("/output.jsp");
+        dispatcher.forward(request, response);
+
         response.setContentType("text/html;charset=UTF-8");
         try (PrintWriter out = response.getWriter()) {
             out.println("<!DOCTYPE html>");
@@ -92,7 +104,7 @@ public class InternetDataSearch extends HttpServlet {
             out.println("<title>Servlet WordSearch</title>");
             out.println("</head>");
             out.println("<body>");
-            
+
             List<SearchResult> data = allresults.getList();
             Iterator<SearchResult> iterator = data.iterator();
             while (iterator.hasNext()) {
@@ -113,25 +125,25 @@ public class InternetDataSearch extends HttpServlet {
                 }
             }
             out.println("</body>");
-            
+
             out.println("</html>");
         }
     }
-    
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
     }
-    
+
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         processRequest(request, response);
     }
-    
+
     private String getDirectoryPath(int step) {
-        
+
         String pathseparator;
         String os = System.getProperty("os.name");
         if (os.startsWith("Windows")) {
@@ -145,7 +157,7 @@ public class InternetDataSearch extends HttpServlet {
         } else {
             path += pathseparator + "datafolder";
         }
-        
+
         File folder = new File(path);
         if (!folder.exists()) {
             folder.mkdir();
@@ -154,12 +166,12 @@ public class InternetDataSearch extends HttpServlet {
             recurseDeleteDir(folder);
             folder.mkdir();
         }
-        
+
         return path + pathseparator;
     }
-    
+
     private void cleanFolder(File dir) {
-        
+
         if (dir.exists()) {
             File[] flist = dir.listFiles();
             for (int i = 0; i < flist.length; i++) {
@@ -168,11 +180,11 @@ public class InternetDataSearch extends HttpServlet {
                     flist[i].delete();
                 }
             }
-            
+
         }
-        
+
     }
-    
+
     private boolean recurseDeleteDir(File fdir) {
         boolean deleted;
         if (fdir.isDirectory()) {
@@ -189,5 +201,5 @@ public class InternetDataSearch extends HttpServlet {
         //deleted = fdir.delete();
         return fdir.delete();
     }
-    
+
 }
